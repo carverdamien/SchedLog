@@ -1,0 +1,27 @@
+config SCHED_LOG
+        def_bool n
+	prompt "Enable scheduler's event logging"
+	---help---
+	  Scheduler Logging facility.
+
+config SCHED_LOG_TRACER
+        def_bool n
+	prompt "Trace scheduling events"
+	depends on SCHED_LOG
+	---help---
+	  Trace scheduling events in per-cpu logs and expose the logs through the debugfs interface
+	  /sys/kernel/debug/sched_log/tracer/.
+	  Enable or disable tracing by writting to /sys/kernel/debug/sched_log/tracer/enabled.
+	  Filter events by writting to /sys/kernel/debug/sched_log/tracer/events/EVENT_NAME.
+	  Empty all per-cpu logs by writting to /sys/kernel/debug/sched_log/tracer/reset.
+	  A human-friendly report of the per-cpu logs are available in /sys/kernel/debug/sched_log/tracer/logs/CPU.
+	  A binary dump of the per-cpu logs are available in /sys/kernel/debug/sched_log/tracer/raw/CPU.
+	  Event documentation is exposed in /proc/sched_log_traced_events.
+
+config SCHED_LOG_TRACER_BUFFER_SIZE
+        int
+	default 64
+	prompt "Per-cpu buffer size (MiB)"
+	depends on SCHED_LOG_TRACER
+	---help---
+	  Size of the per-cpu buffer used by the tracer in MiB.
