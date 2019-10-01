@@ -2972,3 +2972,5 @@ config X86_DEV_DMA_OPS
 source "drivers/firmware/Kconfig"
 
 source "arch/x86/kvm/Kconfig"
+
+source "kernel/sched/Kconfig.sched_log"
