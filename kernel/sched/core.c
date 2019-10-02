@@ -2946,6 +2946,10 @@ void sched_exec(void)
 	unsigned long flags;
 	int dest_cpu;
 
+	sched_log_trace(SCHED_LOG_EXEC, task_cpu(p), p,
+			((u64*)p->comm)[0] >> 32,
+			((u64*)p->comm)[0] & 0x00000000ffffffff);
+
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	dest_cpu = p->sched_class->select_task_rq(p, task_cpu(p), SD_BALANCE_EXEC, 0);
 	if (dest_cpu == smp_processor_id())
