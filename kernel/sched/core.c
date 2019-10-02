@@ -3428,6 +3428,7 @@ static void __sched notrace __schedule(bool preempt)
 			prev->state = TASK_RUNNING;
 		} else {
 			deactivate_task(rq, prev, DEQUEUE_SLEEP | DEQUEUE_NOCLOCK);
+			sched_log_trace(SCHED_LOG_BLOCK, cpu, prev, 0, 0);
 			prev->on_rq = 0;
 
 			if (prev->in_iowait) {
