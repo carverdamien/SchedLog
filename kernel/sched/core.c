@@ -5134,6 +5134,8 @@ long __sched io_schedule_timeout(long timeout)
 	int token;
 	long ret;
 
+	sched_log_trace(SCHED_LOG_BLOCK_IO, task_cpu(current), current, 0, 0);
+
 	token = io_schedule_prepare();
 	ret = schedule_timeout(timeout);
 	io_schedule_finish(token);
@@ -5145,6 +5147,8 @@ EXPORT_SYMBOL(io_schedule_timeout);
 void io_schedule(void)
 {
 	int token;
+
+	sched_log_trace(SCHED_LOG_BLOCK_IO, task_cpu(current), current, 0, 0);
 
 	token = io_schedule_prepare();
 	schedule();
