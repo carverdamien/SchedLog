@@ -4171,6 +4171,7 @@ static void __sched notrace __schedule(bool preempt)
 		++*switch_count;
 
 		trace_sched_switch(preempt, prev, next);
+		sched_log_trace(SCHED_LOG_CTX_SWITCH, cpu, prev, next->pid, 0);
 
 		/* Also unlocks the rq: */
 		rq = context_switch(rq, prev, next, &rf);
