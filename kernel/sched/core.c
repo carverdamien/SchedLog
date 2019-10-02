@@ -3038,6 +3038,84 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 	return ns;
 }
 
+#ifdef CONFIG_SCHED_LOG_TRACER
+
+/*
+ * This code was duplicated on purpose:
+ * 1) We cannot wait here.
+ * 2) We might not want to interfere with the existing behavior.
+ *
+ */
+
+struct aperfmperf_sample {
+	unsigned int	khz;
+	ktime_t	time;
+	u64	aperf;
+	u64	mperf;
+};
+
+static DEFINE_PER_CPU(struct aperfmperf_sample, samples);
+
+#define APERFMPERF_CACHE_THRESHOLD_MS	10
+#define APERFMPERF_REFRESH_DELAY_MS	10
+#define APERFMPERF_STALE_THRESHOLD_MS	1000
+
+static void aperfmperf_snapshot_khz(void *dummy)
+{
+	u64 aperf, aperf_delta;
+	u64 mperf, mperf_delta;
+	struct aperfmperf_sample *s = this_cpu_ptr(&samples);
+	unsigned long flags;
+
+	local_irq_save(flags);
+	rdmsrl(MSR_IA32_APERF, aperf);
+	rdmsrl(MSR_IA32_MPERF, mperf);
+	local_irq_restore(flags);
+
+	aperf_delta = aperf - s->aperf;
+	mperf_delta = mperf - s->mperf;
+
+	/*
+	 * There is no architectural guarantee that MPERF
+	 * increments faster than we can read it.
+	 */
+	if (mperf_delta == 0)
+		return;
+
+	s->time = ktime_get();
+	s->aperf = aperf;
+	s->mperf = mperf;
+	s->khz = div64_u64((cpu_khz * aperf_delta), mperf_delta);
+}
+
+static void aperfmperf_snapshot_cpu(int cpu, ktime_t now)
+{
+	s64 time_delta = ktime_ms_delta(now, per_cpu(samples.time, cpu));
+
+	/* Don't bother re-computing within the cache threshold time. */
+	if (time_delta < APERFMPERF_CACHE_THRESHOLD_MS)
+		return;// true;
+
+	// smp_call_function_single(cpu, aperfmperf_snapshot_khz, NULL, wait);
+	aperfmperf_snapshot_khz(NULL);
+
+	/* Return false if the previous iteration was too long ago. */
+	// return time_delta <= APERFMPERF_STALE_THRESHOLD_MS;
+}
+
+static unsigned int my_aperfmperf_get_khz(int cpu)
+{
+	if (!cpu_khz)
+		return 0;
+
+	if (!static_cpu_has(X86_FEATURE_APERFMPERF))
+		return 0;
+
+	aperfmperf_snapshot_cpu(cpu, ktime_get());
+	return per_cpu(samples.khz, cpu);
+}
+#endif	/* CONFIG_SCHED_LOG_TRACER */
+
 /*
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
@@ -3048,6 +3126,10 @@ void scheduler_tick(void)
 	struct rq *rq = cpu_rq(cpu);
 	struct task_struct *curr = rq->curr;
 	struct rq_flags rf;
+#ifdef CONFIG_SCHED_LOG_TRACER
+	int need_resched = 0;
+	int freq = 0;
+#endif
 
 	sched_clock_tick();
 
@@ -3055,6 +3137,14 @@ void scheduler_tick(void)
 
 	update_rq_clock(rq);
 	curr->sched_class->task_tick(rq, curr, 0);
+
+#ifdef CONFIG_SCHED_LOG_TRACER
+	need_resched = curr->thread_info.flags & _TIF_NEED_RESCHED;
+	need_resched = need_resched >> TIF_NEED_RESCHED;
+	freq = my_aperfmperf_get_khz(cpu);
+#endif
+	sched_log_trace(SCHED_LOG_TICK, cpu, curr, need_resched, freq);
+
 	cpu_load_update_active(rq);
 	calc_global_load_tick(rq);
 
