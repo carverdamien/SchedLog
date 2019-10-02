@@ -107,6 +107,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
 
+#include "sched/log.h"
+
 /*
  * Minimum number of threads to boot the kernel
  */
@@ -2227,6 +2229,7 @@ static __latent_entropy struct task_struct *copy_process(
 	cgroup_post_fork(p);
 	cgroup_threadgroup_change_end(current);
 	perf_event_fork(p);
+	sched_log_trace(SCHED_LOG_FORK, task_cpu(p), p, current->pid, 0);
 
 	trace_task_newtask(p, clone_flags);
 	uprobe_copy_process(p, clone_flags);
