@@ -74,6 +74,7 @@
 
 #include "cpupri.h"
 #include "cpudeadline.h"
+#include "log.h"
 
 #ifdef CONFIG_SCHED_DEBUG
 # define SCHED_WARN_ON(x)	WARN_ONCE(x, #x)
