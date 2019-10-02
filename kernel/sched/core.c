@@ -4096,6 +4096,8 @@ void __noreturn do_task_dead(void)
 	/* Tell freezer to ignore us: */
 	current->flags |= PF_NOFREEZE;
 
+	sched_log_trace(SCHED_LOG_EXIT, task_cpu(current), current, 0, 0);
+
 	__schedule(false);
 	BUG();
 
