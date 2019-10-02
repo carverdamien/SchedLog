@@ -1461,7 +1461,12 @@ static void __unqueue_futex(struct futex_q *q)
  * must ensure to later call wake_up_q() for the actual
  * wakeups to occur.
  */
-static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
+#ifdef CONFIG_SCHED_LOG_TRACER
+static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q, struct futex_hash_bucket *hb)
+#else
+#define mark_wake_futex(wake_q, q, hb) __mark_wake_futex(wake_q, q)
+	static void __mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
+#endif
 {
 	struct task_struct *p = q->task;
 
@@ -1469,6 +1474,16 @@ static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
 		return;
 
 	get_task_struct(p);
+	sched_log_trace(SCHED_LOG_WAKE_FUTEX, task_cpu(current),
+			p,
+			(unsigned long)hb >> 32,
+			(unsigned long)hb & 0x00000000ffffffff);
+
+	/*
+	 * Queue the task for later wakeup for after we've released
+	 * the hb->lock. wake_q_add() grabs reference to p.
+	 */
+	wake_q_add(wake_q, p);
 	__unqueue_futex(q);
 	/*
 	 * The waiting task can free the futex_q as soon as q->lock_ptr = NULL
@@ -1627,7 +1642,7 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 			if (!(this->bitset & bitset))
 				continue;
 
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, hb);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1752,7 +1767,7 @@ retry_private:
 				ret = -EINVAL;
 				goto out_unlock;
 			}
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, hb1);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1766,7 +1781,7 @@ retry_private:
 					ret = -EINVAL;
 					goto out_unlock;
 				}
-				mark_wake_futex(&wake_q, this);
+				mark_wake_futex(&wake_q, this, hb2);
 				if (++op_ret >= nr_wake2)
 					break;
 			}
@@ -2130,7 +2145,7 @@ retry_private:
 		 * woken by futex_unlock_pi().
 		 */
 		if (++task_count <= nr_wake && !requeue_pi) {
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, hb1);
 			continue;
 		}
 
