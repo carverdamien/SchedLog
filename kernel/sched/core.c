@@ -2648,6 +2648,8 @@ out:
 		ttwu_stat(p, cpu, wake_flags);
 	preempt_enable();
 
+	sched_log_trace(SCHED_LOG_WAKEUP, task_cpu(p), p, 0, 0);
+
 	return success;
 }
 
