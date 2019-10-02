@@ -71,6 +71,7 @@
 #include <asm/futex.h>
 
 #include "locking/rtmutex_common.h"
+#include "sched/log.h"
 
 /*
  * READ this before attempting to hack on futexes!
@@ -2503,6 +2504,9 @@ out:
 static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
 				struct hrtimer_sleeper *timeout)
 {
+	sched_log_trace(SCHED_LOG_WAIT_FUTEX, task_cpu(current), current,
+			(unsigned long)hb >> 32,
+			(unsigned long)hb & 0x00000000ffffffff);
 	/*
 	 * The task state is guaranteed to be set before another task can
 	 * wake it. set_current_state() is implemented using smp_store_mb() and
