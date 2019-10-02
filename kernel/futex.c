@@ -1629,6 +1629,10 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 	if (!hb_waiters_pending(hb))
 		goto out_put_key;
 
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
+			(unsigned long)hb >> 32,
+			(unsigned long)hb & 0x00000000ffffffff);
+
 	spin_lock(&hb->lock);
 
 	plist_for_each_entry_safe(this, next, &hb->chain, list) {
@@ -1761,6 +1765,10 @@ retry_private:
 		goto retry;
 	}
 
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
+			(unsigned long)hb1 >> 32,
+			(unsigned long)hb1 & 0x00000000ffffffff);
+
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (match_futex (&this->key, &key1)) {
 			if (this->pi_state || this->rt_waiter) {
@@ -1775,6 +1783,11 @@ retry_private:
 
 	if (op_ret > 0) {
 		op_ret = 0;
+
+		sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
+				(unsigned long)hb2 >> 32,
+				(unsigned long)hb2 & 0x00000000ffffffff);
+
 		plist_for_each_entry_safe(this, next, &hb2->chain, list) {
 			if (match_futex (&this->key, &key2)) {
 				if (this->pi_state || this->rt_waiter) {
@@ -2117,6 +2130,10 @@ retry_private:
 			goto out_unlock;
 		}
 	}
+
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
+			(unsigned long)hb1 >> 32,
+			(unsigned long)hb1 & 0x00000000ffffffff);
 
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (task_count - nr_wake >= nr_requeue)
