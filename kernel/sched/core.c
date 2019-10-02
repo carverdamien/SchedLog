@@ -2054,6 +2054,8 @@ stat:
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
+	sched_log_trace(SCHED_LOG_WAKEUP, task_cpu(p), p, 0, 0);
+
 	return success;
 }
 
