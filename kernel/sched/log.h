@@ -56,7 +56,7 @@ enum sched_log_tracer_entry_format {
 	SCHED_LOG_8_CHAR,
 };
 
-inline enum sched_log_tracer_entry_format sched_log_tracer_entry_format(struct sched_log_tracer_entry *e) {
+static inline enum sched_log_tracer_entry_format sched_log_tracer_entry_format(struct sched_log_tracer_entry *e) {
 	enum sched_log_tracer_entry_format format;
 	switch(e->event) {
 	case SCHED_LOG_EXEC:
