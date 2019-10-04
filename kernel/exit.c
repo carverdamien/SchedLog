@@ -68,6 +68,8 @@
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
 
+#include "sched/log.h"
+
 static void __unhash_process(struct task_struct *p, bool group_dead)
 {
 	nr_threads--;
@@ -1493,6 +1495,9 @@ static long do_wait(struct wait_opts *wo)
 	int retval;
 
 	trace_sched_process_wait(wo->wo_pid);
+
+	sched_log_trace(SCHED_LOG_WAIT_PID, task_cpu(current),
+			current, wo->wo_type, wo->wo_flags);
 
 	init_waitqueue_func_entry(&wo->child_wait, child_wait_callback);
 	wo->child_wait.private = current;
