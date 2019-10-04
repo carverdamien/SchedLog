@@ -1394,7 +1394,7 @@ static void __mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
 		return;
 
 	sched_log_trace(SCHED_LOG_WAKE_FUTEX, task_cpu(current),
-			p, uaddr, 0);
+			p, (unsigned long)uaddr, 0);
 
 	/*
 	 * Queue the task for later wakeup for after we've released
@@ -1543,8 +1543,7 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 		goto out_put_key;
 
 	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
-			(unsigned long)hb >> 32,
-			(unsigned long)hb & 0x00000000ffffffff);
+			(unsigned long)uaddr, 0);
 
 	spin_lock(&hb->lock);
 
@@ -1679,7 +1678,7 @@ retry_private:
 	}
 
 	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
-			current, uaddr1, 0);
+			current, (unsigned long)uaddr1, 0);
 
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (match_futex (&this->key, &key1)) {
@@ -1697,7 +1696,7 @@ retry_private:
 		op_ret = 0;
 
 		sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
-				current, uaddr1, 0);
+				current, (unsigned long)uaddr1, 0);
 
 		plist_for_each_entry_safe(this, next, &hb2->chain, list) {
 			if (match_futex (&this->key, &key2)) {
@@ -2043,7 +2042,7 @@ retry_private:
 	}
 
 	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
-			current, uaddr1, 0);
+			current, (unsigned long)uaddr1, 0);
 
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (task_count - nr_wake >= nr_requeue)
@@ -2533,7 +2532,7 @@ static void __futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *
 #endif
 {
 	sched_log_trace(SCHED_LOG_WAIT_FUTEX, task_cpu(current),
-			current, uaddr, 0);
+			current, (unsigned long)uaddr, 0);
 
 	/*
 	 * The task state is guaranteed to be set before another task can
