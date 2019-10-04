@@ -37,9 +37,9 @@ static const char* sched_log_traced_event_str[] = {
 	"IDL_BLN_FAIR_END", "task_cpu(current)", "current", "sd addr (high)", "sd addr (low)",
 	"PER_BLN_FAIR_BEG", "task_cpu(current)", "current", "sd addr (high)", "sd addr (low)",
 	"PER_BLN_FAIR_END", "task_cpu(current)", "current", "sd addr (high)", "sd addr (low)",
-	"WAIT_FUTEX","waiting thread's","waiting thread","futex addr (high)","futex addr (low)",
-	"WAKE_FUTEX","waker's","woken thread","futex addr (high)","futex addr (low)",
-	"WAKER_FUTEX","waker's","woker thread","futex addr (high)","futex addr (low)",
+	"WAIT_FUTEX","waiting thread's","waiting thread","futex uaddr","0",
+	"WAKE_FUTEX","waker's","woken thread","futex uaddr","0",
+	"WAKER_FUTEX","waker's","woker thread","futex uaddr","0",
 };
 #define sched_log_traced_event_name(evt) sched_log_traced_event_str[evt*NR_SCHED_LOG_TRACED_EVENT_HEADER+0]
 
