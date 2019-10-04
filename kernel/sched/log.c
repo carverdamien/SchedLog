@@ -15,23 +15,29 @@ EXPORT_SYMBOL(sched_log_tracer);
 bool sched_log_tracer_enabled;
 EXPORT_SYMBOL(sched_log_tracer_enabled);
 
-static const char* sched_log_traced_event_str[NR_SCHED_LOG_TRACED_EVENTS+1][6] = {
-	{"EXEC","exec'ing thread's, before possible migration","caller","comm (high)","comm (low)"}, /* TODO: may need to add a COMM_CHANGED event */
-	{"EXIT","exiting thread's","exiting thread","0","0"},
-	{"WAKEUP","woken thread's new cpu","woken thread","0","0"},
-	{"WAKEUP_NEW","new thread's","new thread","0","0"},
-	{"BLOCK","blocked thread's","blocked thread","0","0"},
-	{"BLOCK_IO","blocked thread's","blocked thread","0","0"},
-	{"FORK","parent's","child's","parent's pid","0"},
-	{"TICK","current's","current","need_resched","frequency"},
-	{"CTX_SWITCH","prev's","prev","next pid","0"},
-	{"MIGRATE","cpu of the thread commanding the migration","pid of the thread migrating from old_cpu to new_cpu","old_cpu","new_cpu"},
-	{"RQ_SIZE","cpu of the runqueue","current","nr_running","difference"},
-	{"WAIT_FUTEX","waiting thread's","waiting thread","futex addr (high)","futex addr (low)"},
-	{"WAKE_FUTEX","waker's","woken thread","futex addr (high)","futex addr (low)"},
-    	{"WAKER_FUTEX","waker's","woker thread","futex addr (high)","futex addr (low)"},
-	{"EVENT_NAME","CPU","PID","ARG0","ARG1"}, /* HEADER */
+static const char* sched_log_traced_event_header_str[] = {
+	"EVENT_NAME","CPU","PID","ARG0","ARG1",
 };
+#define NR_SCHED_LOG_TRACED_EVENT_HEADER ARRAY_SIZE(sched_log_traced_event_header_str)
+
+static const char* sched_log_traced_event_str[] = {
+	"EXEC","exec'ing thread's, before possible migration","caller","comm (high)","comm (low)",
+        /* TODO: may need to add a SET_COMM event */
+	"EXIT","exiting thread's","exiting thread","0","0",
+	"WAKEUP","woken thread's new cpu","woken thread","0","0",
+	"WAKEUP_NEW","new thread's","new thread","0","0",
+	"BLOCK","blocked thread's","blocked thread","0","0",
+	"BLOCK_IO","blocked thread's","blocked thread","0","0",
+	"FORK","parent's","child's","parent's pid","0",
+	"TICK","current's","current","need_resched","frequency",
+	"CTX_SWITCH","prev's","prev","next pid","0",
+	"MIGRATE","cpu of the thread commanding the migration","pid of the thread migrating from old_cpu to new_cpu","old_cpu","new_cpu",
+	"RQ_SIZE","cpu of the runqueue","current","nr_running","difference",
+	"WAIT_FUTEX","waiting thread's","waiting thread","futex addr (high)","futex addr (low)",
+	"WAKE_FUTEX","waker's","woken thread","futex addr (high)","futex addr (low)",
+	"WAKER_FUTEX","waker's","woker thread","futex addr (high)","futex addr (low)",
+};
+#define sched_log_traced_event_name(evt) sched_log_traced_event_str[evt*NR_SCHED_LOG_TRACED_EVENT_HEADER+0]
 
 bool sched_log_traced_event_enabled[NR_SCHED_LOG_TRACED_EVENTS];
 EXPORT_SYMBOL(sched_log_traced_event_enabled);
@@ -128,27 +134,27 @@ static int shed_log_tracer_seq_show(struct seq_file *s, void *v)
 	switch (sched_log_tracer_entry_format(evt)) {
 	case SCHED_LOG_NO_ARGS:
 		seq_printf(s, "%llu %s %d\n",
-			   evt->timestamp, sched_log_traced_event_str[evt->event][0],
+			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid);
 		break;
 	case SCHED_LOG_ONE_PTR:
 		seq_printf(s, "%llu %s %d 0x%p\n",
-			   evt->timestamp, sched_log_traced_event_str[evt->event][0],
+			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid, (void *)evt->addr);
 		break;
 	case SCHED_LOG_ONE_INT:
 		seq_printf(s, "%llu %s %d %d\n",
-			   evt->timestamp, sched_log_traced_event_str[evt->event][0],
+			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid, evt->arg0);
 		break;
 	case SCHED_LOG_TWO_INT:
 		seq_printf(s, "%llu %s %d %d %d\n",
-			   evt->timestamp, sched_log_traced_event_str[evt->event][0],
+			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid, evt->arg0, evt->arg1);
 		break;
 	case SCHED_LOG_8_CHAR:
 		seq_printf(s, "%llu %s %d %c%c%c%c%c%c%c%c\n",
-			   evt->timestamp, sched_log_traced_event_str[evt->event][0],
+			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid,
 			   ((char*)evt->addr)[0],
 			   ((char*)evt->addr)[1],
@@ -276,7 +282,7 @@ static int sched_log_traced_events_proc_show(struct seq_file *s, void *v)
 	loff_t *pos = v;
 
 	/* TODO: pretty print {"EVENT_NAME","CPU","PID","ARG0","ARG1"} */
-	seq_printf(s, "%lld %s\n", *pos, sched_log_traced_event_str[*pos][0]);
+	seq_printf(s, "%lld %s\n", *pos, sched_log_traced_event_name(*pos));
 
 	return 0;
 }
@@ -324,6 +330,8 @@ static int sched_log_tracer_init(void)
 		spin_lock_init(&log->lock);
 	}
 
+	BUILD_BUG_ON(ARRAY_SIZE(sched_log_traced_event_str) != NR_SCHED_LOG_TRACED_EVENTS*NR_SCHED_LOG_TRACED_EVENT_HEADER);
+
 	/* Create files in /sys/kernel/debug/sched_log/tracer */
 	tracer_dir = debugfs_create_dir("tracer", sched_log_dir);
 	debugfs_create_bool("enable", 0666, tracer_dir,
@@ -334,7 +342,7 @@ static int sched_log_tracer_init(void)
 	events_dir = debugfs_create_dir("events", tracer_dir);
 	for (i = 0; i < NR_SCHED_LOG_TRACED_EVENTS; i++) {
 		sched_log_traced_event_enabled[i] = false;
-		debugfs_create_bool(sched_log_traced_event_str[i][0], 0666,
+		debugfs_create_bool(sched_log_traced_event_name(i), 0666,
 				    events_dir,
 				    sched_log_traced_event_enabled + i);
 	}
