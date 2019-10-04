@@ -156,14 +156,14 @@ static int shed_log_tracer_seq_show(struct seq_file *s, void *v)
 		seq_printf(s, "%llu %s %d %c%c%c%c%c%c%c%c\n",
 			   evt->timestamp, sched_log_traced_event_name(evt->event),
 			   evt->pid,
-			   ((char*)evt->addr)[0],
-			   ((char*)evt->addr)[1],
-			   ((char*)evt->addr)[2],
-			   ((char*)evt->addr)[3],
-			   ((char*)evt->addr)[4],
-			   ((char*)evt->addr)[5],
-			   ((char*)evt->addr)[6],
-			   ((char*)evt->addr)[7]
+			   ((char*)&evt->addr)[0],
+			   ((char*)&evt->addr)[1],
+			   ((char*)&evt->addr)[2],
+			   ((char*)&evt->addr)[3],
+			   ((char*)&evt->addr)[4],
+			   ((char*)&evt->addr)[5],
+			   ((char*)&evt->addr)[6],
+			   ((char*)&evt->addr)[7]
 			);
 		break;
 	default:
