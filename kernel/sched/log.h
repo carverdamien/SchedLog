@@ -33,6 +33,7 @@ enum sched_log_traced_event {
 	SCHED_LOG_BLOCK,
 	SCHED_LOG_BLOCK_IO,
 	SCHED_LOG_FORK,
+	SCHED_LOG_WAIT_PID,
 	SCHED_LOG_TICK,
 	SCHED_LOG_CTX_SWITCH,
 	SCHED_LOG_MIGRATE,
@@ -83,6 +84,7 @@ static inline enum sched_log_tracer_entry_format sched_log_tracer_entry_format(s
 	case SCHED_LOG_CTX_SWITCH:
 		format = SCHED_LOG_ONE_INT;
 		break;
+	case SCHED_LOG_WAIT_PID:
 	case SCHED_LOG_MIGRATE:
 	case SCHED_LOG_RQ_SIZE:
 		format = SCHED_LOG_TWO_INT;
