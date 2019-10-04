@@ -1,0 +1,148 @@
+#! /bin/bash
+set -e
+
+function usage {
+    echo "Usage: $0 command args"
+    echo ""
+    echo "COMMANDS:"
+    echo "start <subsystems>          starts profiling for the given subsystems"
+    echo "stop <subsystems>           stop profiling for the given subsystems"
+    echo "reset <subsystems>          reset logs for the given subsystems"
+    echo "dump <path> <subsystems>    dump results at path for the given subsystems"
+    echo "dump-raw <path> <subsystems>    dump results at path for the given subsystems"
+    echo "status <subsystems>         get the status of the given subsystems"
+    echo ""
+    echo "SUBSYSTEMS:"
+    echo " tracer        trace scheduling events"
+
+    exit 0
+}
+
+DEBUGFS=/sys/kernel/debug
+P=${DEBUGFS}/sched_log
+
+function check_subsys {
+    for v in "$@" ;  do
+	if [ ! -e $P/$v ] ; then
+	    echo "[ERROR] '$v' subsystem is not supported on this system. Exiting"
+	    exit 2
+	fi
+    done
+}
+
+function reset {
+    echo 1 > $P/$1/reset
+}
+
+function start {
+    if [ "$1" == "tracer" ] ; then
+	echo y | tee $P/tracer/events/* > /dev/null
+    fi
+    echo y > $P/$1/enable
+}
+
+function stop {
+    echo n > $P/$1/enable
+}
+
+function check_path {
+    if [ -e $1 ] ; then
+	echo "[ERROR] Path already exists ($1). Exiting"
+	exit 4
+    fi
+}
+
+function dump {
+    n=$(nproc)
+    mkdir -p $1/$2
+    for ((i=0; i<n; i++)) ; do
+	cp -r $P/$2/logs/$i $1/$2/
+    done
+}
+
+function dump-raw {
+    n=$(nproc)
+    mkdir -p $1/$2
+    for ((i=0; i<n; i++)) ; do
+	if [ -e $P/$2/raw/$i ]
+	then
+	    cp -r $P/$2/raw/$i $1/$2
+	else
+	    cp -r $P/$2/logs/$i $1/$2
+	fi
+    done
+}
+
+function status {
+    echo "$1: $(cat $P/$1/enable)"
+}
+
+################################################################################
+#  SCRIPT
+################################################################################
+
+# Check permissions on debugfs interface
+if [ ! -r ${DEBUGFS} -o ! -x ${DEBUGFS} ] ; then
+    echo "[ERROR] You do not have rx permissions on ${DEBUGFS}. Ask your sysadmin for help!"
+    exit 5
+fi
+if [ ! -d $P ] ; then
+    echo "[ERROR] sched_log is not supported on this system"
+    exit 5
+fi
+
+case $1 in
+    "start")
+	shift
+	check_subsys "$@"
+	for s in "$@" ; do
+	    start $s
+	done
+	;;
+    "stop")
+	shift
+	check_subsys "$@"
+	for s in "$@" ; do
+	    stop $s
+	done
+	;;
+    "reset")
+	shift
+	check_subsys "$@"
+	for s in "$@" ; do
+	    reset $s
+	done
+	;;
+    "dump")
+	shift
+	check_path $1
+	path=$1
+	shift
+	check_subsys "$@"
+	mkdir -p $path
+	for s in "$@" ; do
+	    dump $path $s
+	done
+	;;
+     "dump-raw")
+	shift
+	check_path $1
+	path=$1
+	shift
+	check_subsys "$@"
+	mkdir -p $path
+	for s in "$@" ; do
+	    dump-raw $path $s
+	done
+	;;
+    "status")
+	shift
+	check_subsys "$@"
+	for s in "$@" ; do
+	    status $s
+	done
+	;;
+    *)
+	usage
+	exit 1
+esac
