@@ -2,7 +2,7 @@ config SCHED_LOG
         def_bool n
 	prompt "Enable scheduler's event logging"
 	---help---
-	  Scheduler Logging facility.
+	  Scheduler Logging facility. Tool available in tools/sched_log.
 
 config SCHED_LOG_TRACER
         def_bool n
