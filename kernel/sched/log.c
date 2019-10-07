@@ -29,6 +29,7 @@ static const char* sched_log_traced_event_str[] = {
 	"BLOCK","blocked thread's","blocked thread","0","0",
 	"BLOCK_IO","blocked thread's","blocked thread","0","0",
 	"FORK","parent's","child's","parent's pid","0",
+	"WAIT_PID", "task_cpu(current)", "current", "wo->wo_type", "wo->wo_flags",
 	"TICK","current's","current","need_resched","frequency",
 	"CTX_SWITCH","prev's","prev","next pid","0",
 	"MIGRATE","cpu of the thread commanding the migration","pid of the thread migrating from old_cpu to new_cpu","old_cpu","new_cpu",
