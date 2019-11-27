@@ -6448,6 +6448,15 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int want_affine = 0;
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
+#ifdef CONFIG_LOCAL_PLACEMENT
+	if (sysctl_sched_local_placement > 0 &&                                  /* Is local_placement activated globally ? */
+	    p->sched_local_placement &&                                          /* Is p tagged as task that should place locally ? */
+	    (sd_flag & (SD_BALANCE_WAKE | SD_BALANCE_FORK | SD_BALANCE_EXEC)) && /* Only during wake, fork or exec */
+	    (sysctl_sched_local_placement == 1 ||                                /* Ignore rq_size if sysctl_sched_local_placement==1 */
+	     task_rq(p)->nr_running < sysctl_sched_local_placement))             /* Consider cpu as overloaded if rq_size >= sysctl_sched_local_placement */
+		return task_cpu(p);
+#endif
+
 	if (sd_flag & SD_BALANCE_WAKE) {
 		record_wakee(p);
 

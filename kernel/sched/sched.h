@@ -1959,6 +1959,10 @@ extern void check_preempt_curr(struct rq *rq, struct task_struct *p, int flags);
 extern const_debug unsigned int sysctl_sched_nr_migrate;
 extern const_debug unsigned int sysctl_sched_migration_cost;
 
+#ifdef CONFIG_LOCAL_PLACEMENT
+extern unsigned int sysctl_sched_local_placement;
+#endif
+
 #ifdef CONFIG_SCHED_HRTICK
 
 /*
