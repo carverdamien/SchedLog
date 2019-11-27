@@ -2260,8 +2260,9 @@ config ARCH_HAS_SYSCALL_WRAPPER
 	def_bool n
 
 config LOCAL_PLACEMENT
-       bool
-       help
+       def_bool n
+       prompt "Enable an heuristic in CFS that places tasks locally"
+       ---help---
          Enable an heuristic in CFS that places tasks locally.
 	 When sysctl_sched_local_placement is set 0, the heuristic is not active.
 	 When sysctl_sched_local_placement is set 1, the heuristic ignores the number of tasks in the run queues.
