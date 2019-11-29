@@ -6448,6 +6448,10 @@ select_task_rq_fair(struct task_struct *p, int prev_cpu, int sd_flag, int wake_f
 	int want_affine = 0;
 	int sync = (wake_flags & WF_SYNC) && !(current->flags & PF_EXITING);
 
+	if (sd_flag & (SD_BALANCE_WAKE | SD_BALANCE_FORK | SD_BALANCE_EXEC))
+		if (task_rq(p)->nr_running < 2)
+			return task_cpu(p);
+
 	if (sd_flag & SD_BALANCE_WAKE) {
 		record_wakee(p);
 
