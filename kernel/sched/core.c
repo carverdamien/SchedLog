@@ -1171,6 +1171,8 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 		p->se.nr_migrations++;
 		rseq_migrate(p);
 		perf_event_task_migrate(p);
+		sched_log_trace(SCHED_LOG_MIGRATE, task_cpu(current), p,
+				task_cpu(p), new_cpu);
 	}
 
 	__set_task_cpu(p, new_cpu);
@@ -2054,6 +2056,8 @@ stat:
 out:
 	raw_spin_unlock_irqrestore(&p->pi_lock, flags);
 
+	sched_log_trace(SCHED_LOG_WAKEUP, task_cpu(p), p, 0, 0);
+
 	return success;
 }
 
@@ -2417,6 +2421,7 @@ void wake_up_new_task(struct task_struct *p)
 	activate_task(rq, p, ENQUEUE_NOCLOCK);
 	p->on_rq = TASK_ON_RQ_QUEUED;
 	trace_sched_wakeup_new(p);
+	sched_log_trace(SCHED_LOG_WAKEUP_NEW, rq->cpu, p, 0, 0);
 	check_preempt_curr(rq, p, WF_FORK);
 #ifdef CONFIG_SMP
 	if (p->sched_class->task_woken) {
@@ -2946,6 +2951,10 @@ void sched_exec(void)
 	unsigned long flags;
 	int dest_cpu;
 
+	sched_log_trace(SCHED_LOG_EXEC, task_cpu(p), p,
+			((u64*)p->comm)[0] >> 32,
+			((u64*)p->comm)[0] & 0x00000000ffffffff);
+
 	raw_spin_lock_irqsave(&p->pi_lock, flags);
 	dest_cpu = p->sched_class->select_task_rq(p, task_cpu(p), SD_BALANCE_EXEC, 0);
 	if (dest_cpu == smp_processor_id())
@@ -3031,6 +3040,84 @@ unsigned long long task_sched_runtime(struct task_struct *p)
 	return ns;
 }
 
+#ifdef CONFIG_SCHED_LOG_TRACER
+
+/*
+ * This code was duplicated on purpose:
+ * 1) We cannot wait here.
+ * 2) We might not want to interfere with the existing behavior.
+ *
+ */
+
+struct aperfmperf_sample {
+	unsigned int	khz;
+	ktime_t	time;
+	u64	aperf;
+	u64	mperf;
+};
+
+static DEFINE_PER_CPU(struct aperfmperf_sample, samples);
+
+#define APERFMPERF_CACHE_THRESHOLD_MS	10
+#define APERFMPERF_REFRESH_DELAY_MS	10
+#define APERFMPERF_STALE_THRESHOLD_MS	1000
+
+static void aperfmperf_snapshot_khz(void *dummy)
+{
+	u64 aperf, aperf_delta;
+	u64 mperf, mperf_delta;
+	struct aperfmperf_sample *s = this_cpu_ptr(&samples);
+	unsigned long flags;
+
+	local_irq_save(flags);
+	rdmsrl(MSR_IA32_APERF, aperf);
+	rdmsrl(MSR_IA32_MPERF, mperf);
+	local_irq_restore(flags);
+
+	aperf_delta = aperf - s->aperf;
+	mperf_delta = mperf - s->mperf;
+
+	/*
+	 * There is no architectural guarantee that MPERF
+	 * increments faster than we can read it.
+	 */
+	if (mperf_delta == 0)
+		return;
+
+	s->time = ktime_get();
+	s->aperf = aperf;
+	s->mperf = mperf;
+	s->khz = div64_u64((cpu_khz * aperf_delta), mperf_delta);
+}
+
+static void aperfmperf_snapshot_cpu(int cpu, ktime_t now)
+{
+	s64 time_delta = ktime_ms_delta(now, per_cpu(samples.time, cpu));
+
+	/* Don't bother re-computing within the cache threshold time. */
+	if (time_delta < APERFMPERF_CACHE_THRESHOLD_MS)
+		return;// true;
+
+	// smp_call_function_single(cpu, aperfmperf_snapshot_khz, NULL, wait);
+	aperfmperf_snapshot_khz(NULL);
+
+	/* Return false if the previous iteration was too long ago. */
+	// return time_delta <= APERFMPERF_STALE_THRESHOLD_MS;
+}
+
+static unsigned int my_aperfmperf_get_khz(int cpu)
+{
+	if (!cpu_khz)
+		return 0;
+
+	if (!static_cpu_has(X86_FEATURE_APERFMPERF))
+		return 0;
+
+	aperfmperf_snapshot_cpu(cpu, ktime_get());
+	return per_cpu(samples.khz, cpu);
+}
+#endif	/* CONFIG_SCHED_LOG_TRACER */
+
 /*
  * This function gets called by the timer code, with HZ frequency.
  * We call it with interrupts disabled.
@@ -3041,6 +3128,10 @@ void scheduler_tick(void)
 	struct rq *rq = cpu_rq(cpu);
 	struct task_struct *curr = rq->curr;
 	struct rq_flags rf;
+#ifdef CONFIG_SCHED_LOG_TRACER
+	int need_resched = 0;
+	int freq = 0;
+#endif
 
 	sched_clock_tick();
 
@@ -3048,6 +3139,14 @@ void scheduler_tick(void)
 
 	update_rq_clock(rq);
 	curr->sched_class->task_tick(rq, curr, 0);
+
+#ifdef CONFIG_SCHED_LOG_TRACER
+	need_resched = curr->thread_info.flags & _TIF_NEED_RESCHED;
+	need_resched = need_resched >> TIF_NEED_RESCHED;
+	freq = my_aperfmperf_get_khz(cpu);
+#endif
+	sched_log_trace(SCHED_LOG_TICK, cpu, curr, need_resched, freq);
+
 	cpu_load_update_active(rq);
 	calc_global_load_tick(rq);
 
@@ -3421,6 +3520,7 @@ static void __sched notrace __schedule(bool preempt)
 			prev->state = TASK_RUNNING;
 		} else {
 			deactivate_task(rq, prev, DEQUEUE_SLEEP | DEQUEUE_NOCLOCK);
+			sched_log_trace(SCHED_LOG_BLOCK, cpu, prev, 0, 0);
 			prev->on_rq = 0;
 
 			if (prev->in_iowait) {
@@ -3468,6 +3568,7 @@ static void __sched notrace __schedule(bool preempt)
 		++*switch_count;
 
 		trace_sched_switch(preempt, prev, next);
+		sched_log_trace(SCHED_LOG_CTX_SWITCH, cpu, prev, next->pid, 0);
 
 		/* Also unlocks the rq: */
 		rq = context_switch(rq, prev, next, &rf);
@@ -3486,6 +3587,8 @@ void __noreturn do_task_dead(void)
 
 	/* Tell freezer to ignore us: */
 	current->flags |= PF_NOFREEZE;
+
+	sched_log_trace(SCHED_LOG_EXIT, task_cpu(current), current, 0, 0);
 
 	__schedule(false);
 	BUG();
@@ -5124,6 +5227,8 @@ long __sched io_schedule_timeout(long timeout)
 	int token;
 	long ret;
 
+	sched_log_trace(SCHED_LOG_BLOCK_IO, task_cpu(current), current, 0, 0);
+
 	token = io_schedule_prepare();
 	ret = schedule_timeout(timeout);
 	io_schedule_finish(token);
@@ -5135,6 +5240,8 @@ EXPORT_SYMBOL(io_schedule_timeout);
 void io_schedule(void)
 {
 	int token;
+
+	sched_log_trace(SCHED_LOG_BLOCK_IO, task_cpu(current), current, 0, 0);
 
 	token = io_schedule_prepare();
 	schedule();

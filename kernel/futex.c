@@ -71,6 +71,7 @@
 #include <asm/futex.h>
 
 #include "locking/rtmutex_common.h"
+#include "sched/log.h"
 
 /*
  * READ this before attempting to hack on futexes!
@@ -1380,12 +1381,20 @@ static void __unqueue_futex(struct futex_q *q)
  * must ensure to later call wake_up_q() for the actual
  * wakeups to occur.
  */
-static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
+#ifdef CONFIG_SCHED_LOG_TRACER
+static void mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q, u32 __user *uaddr)
+#else
+#define mark_wake_futex(wake_q, q, uaddr) __mark_wake_futex(wake_q, q)
+static void __mark_wake_futex(struct wake_q_head *wake_q, struct futex_q *q)
+#endif
 {
 	struct task_struct *p = q->task;
 
 	if (WARN(q->pi_state || q->rt_waiter, "refusing to wake PI futex\n"))
 		return;
+
+	sched_log_trace(SCHED_LOG_WAKE_FUTEX, task_cpu(current),
+			p, (unsigned long)uaddr, 0);
 
 	/*
 	 * Queue the task for later wakeup for after we've released
@@ -1533,6 +1542,9 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 	if (!hb_waiters_pending(hb))
 		goto out_put_key;
 
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current), current,
+			(unsigned long)uaddr, 0);
+
 	spin_lock(&hb->lock);
 
 	plist_for_each_entry_safe(this, next, &hb->chain, list) {
@@ -1546,7 +1558,7 @@ futex_wake(u32 __user *uaddr, unsigned int flags, int nr_wake, u32 bitset)
 			if (!(this->bitset & bitset))
 				continue;
 
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, uaddr);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1665,13 +1677,16 @@ retry_private:
 		goto retry;
 	}
 
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
+			current, (unsigned long)uaddr1, 0);
+
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (match_futex (&this->key, &key1)) {
 			if (this->pi_state || this->rt_waiter) {
 				ret = -EINVAL;
 				goto out_unlock;
 			}
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, uaddr1);
 			if (++ret >= nr_wake)
 				break;
 		}
@@ -1679,13 +1694,17 @@ retry_private:
 
 	if (op_ret > 0) {
 		op_ret = 0;
+
+		sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
+				current, (unsigned long)uaddr1, 0);
+
 		plist_for_each_entry_safe(this, next, &hb2->chain, list) {
 			if (match_futex (&this->key, &key2)) {
 				if (this->pi_state || this->rt_waiter) {
 					ret = -EINVAL;
 					goto out_unlock;
 				}
-				mark_wake_futex(&wake_q, this);
+				mark_wake_futex(&wake_q, this, uaddr2);
 				if (++op_ret >= nr_wake2)
 					break;
 			}
@@ -2022,6 +2041,9 @@ retry_private:
 		}
 	}
 
+	sched_log_trace(SCHED_LOG_WAKER_FUTEX, task_cpu(current),
+			current, (unsigned long)uaddr1, 0);
+
 	plist_for_each_entry_safe(this, next, &hb1->chain, list) {
 		if (task_count - nr_wake >= nr_requeue)
 			break;
@@ -2049,7 +2071,7 @@ retry_private:
 		 * woken by futex_unlock_pi().
 		 */
 		if (++task_count <= nr_wake && !requeue_pi) {
-			mark_wake_futex(&wake_q, this);
+			mark_wake_futex(&wake_q, this, uaddr1);
 			continue;
 		}
 
@@ -2500,9 +2522,18 @@ out:
  * @q:		the futex_q to queue up on
  * @timeout:	the prepared hrtimer_sleeper, or null for no timeout
  */
+#ifdef CONFIG_SCHED_LOG_TRACER
 static void futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
-				struct hrtimer_sleeper *timeout)
+				struct hrtimer_sleeper *timeout, u32 __user *uaddr)
+#else
+#define futex_wait_queue_me(hb, q, timeout, uaddr) __futex_wait_queue_me(hb, q, timeout)
+static void __futex_wait_queue_me(struct futex_hash_bucket *hb, struct futex_q *q,
+				  struct hrtimer_sleeper *timeout)
+#endif
 {
+	sched_log_trace(SCHED_LOG_WAIT_FUTEX, task_cpu(current),
+			current, (unsigned long)uaddr, 0);
+
 	/*
 	 * The task state is guaranteed to be set before another task can
 	 * wake it. set_current_state() is implemented using smp_store_mb() and
@@ -2642,7 +2673,7 @@ retry:
 		goto out;
 
 	/* queue_me and wait for wakeup, timeout, or a signal. */
-	futex_wait_queue_me(hb, &q, to);
+	futex_wait_queue_me(hb, &q, to, uaddr);
 
 	/* If we were woken (and unqueued), we succeeded, whatever. */
 	ret = 0;
@@ -3166,7 +3197,7 @@ static int futex_wait_requeue_pi(u32 __user *uaddr, unsigned int flags,
 	}
 
 	/* Queue the futex_q, drop the hb lock, wait for wakeup. */
-	futex_wait_queue_me(hb, &q, to);
+	futex_wait_queue_me(hb, &q, to, uaddr);
 
 	spin_lock(&hb->lock);
 	ret = handle_early_requeue_pi_wakeup(hb, &q, &key2, to);

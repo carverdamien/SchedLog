@@ -72,6 +72,7 @@
 
 #include "cpupri.h"
 #include "cpudeadline.h"
+#include "log.h"
 
 #ifdef CONFIG_SCHED_DEBUG
 # define SCHED_WARN_ON(x)	WARN_ONCE(x, #x)
@@ -1702,6 +1703,10 @@ static inline void add_nr_running(struct rq *rq, unsigned count)
 	}
 
 	sched_update_tick_dependency(rq);
+
+	if (count)
+		sched_log_trace(SCHED_LOG_RQ_SIZE, rq->cpu, current,
+				rq->nr_running, count);
 }
 
 static inline void sub_nr_running(struct rq *rq, unsigned count)
@@ -1709,6 +1714,10 @@ static inline void sub_nr_running(struct rq *rq, unsigned count)
 	rq->nr_running -= count;
 	/* Check if we still need preemption */
 	sched_update_tick_dependency(rq);
+
+	if (count)
+		sched_log_trace(SCHED_LOG_RQ_SIZE, rq->cpu, current,
+				rq->nr_running, -count);
 }
 
 extern void update_rq_clock(struct rq *rq);
