@@ -1932,6 +1932,8 @@ static __latent_entropy struct task_struct *copy_process(
 #ifdef CONFIG_LOCAL_PLACEMENT
 	if (!(clone_flags & CLONE_THREAD))
 		p->sched_local_placement = true;
+	else
+		p->sched_local_placement = false;
 #endif
 
 	task_io_accounting_init(&p->ioac);
