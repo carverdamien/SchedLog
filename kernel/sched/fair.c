@@ -40,6 +40,10 @@
 unsigned int sysctl_sched_latency			= 6000000ULL;
 static unsigned int normalized_sysctl_sched_latency	= 6000000ULL;
 
+#ifdef CONFIG_LOCAL_PLACEMENT
+unsigned int sysctl_sched_local_placement = 0;
+#endif
+
 /*
  * The initial- and re-scaling of tunables is configurable
  *

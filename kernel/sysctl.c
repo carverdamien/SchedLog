@@ -376,7 +376,7 @@ static struct ctl_table kern_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec,
 	},
-#idef CONFIG_LOCAL_PLACEMENT
+#ifdef CONFIG_LOCAL_PLACEMENT
 	{
 		.procname       = "sched_local_placement",
 		.data           = &sysctl_sched_local_placement,
