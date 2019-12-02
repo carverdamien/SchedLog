@@ -47,6 +47,10 @@ int sched_proc_update_handler(struct ctl_table *table, int write,
 		loff_t *ppos);
 #endif
 
+#ifdef CONFIG_LOCAL_PLACEMENT
+extern unsigned int sysctl_sched_local_placement;
+#endif
+
 /*
  *  control realtime throttling:
  *

@@ -1929,6 +1929,13 @@ static __latent_entropy struct task_struct *copy_process(
 	p->psi_flags = 0;
 #endif
 
+#ifdef CONFIG_LOCAL_PLACEMENT
+	if (!(clone_flags & CLONE_THREAD))
+		p->sched_local_placement = true;
+	else
+		p->sched_local_placement = false;
+#endif
+
 	task_io_accounting_init(&p->ioac);
 	acct_clear_integrals(p);
 
