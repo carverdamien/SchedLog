@@ -596,6 +596,31 @@ TRACE_EVENT(sched_wake_idle_without_ipi,
 );
 
 /*
+ * Tracepoint for runqueue size change.
+ */
+TRACE_EVENT(sched_rq_size_change,
+
+	    TP_PROTO(struct rq *rq, int count),
+
+	    TP_ARGS(rq, count),
+
+	    TP_STRUCT__entry(
+		    __field(int, cpu  )
+		    __field(int, size )
+		    __field(int, count)
+	    ),
+
+	    TP_fast_assign(
+		    __entry->cpu   = rq->cpu;
+		    __entry->size  = rq->nr_running;
+		    __entry->count = count;
+	    ),
+
+	    TP_printk("cpu=%d size=%d count=%d",
+		      __entry->cpu, __entry->size, __entry->count)
+);
+
+/*
  * Following tracepoints are not exported in tracefs and provide hooking
  * mechanisms only for testing and debugging purposes.
  *
