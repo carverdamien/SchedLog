@@ -9,6 +9,8 @@
  */
 #include "sched.h"
 
+#include <trace/events/sched.h>
+
 #ifdef CONFIG_SMP
 static int
 select_task_rq_stop(struct task_struct *p, int cpu, int sd_flag, int flags)
@@ -50,12 +52,14 @@ static void
 enqueue_task_stop(struct rq *rq, struct task_struct *p, int flags)
 {
 	add_nr_running(rq, 1);
+	trace_sched_rq_size_change(rq, 1);
 }
 
 static void
 dequeue_task_stop(struct rq *rq, struct task_struct *p, int flags)
 {
 	sub_nr_running(rq, 1);
+	trace_sched_rq_size_change(rq, -1);
 }
 
 static void yield_task_stop(struct rq *rq)

@@ -7,6 +7,8 @@
 
 #include "pelt.h"
 
+#include <trace/events/sched.h>
+
 int sched_rr_timeslice = RR_TIMESLICE;
 int sysctl_sched_rr_timeslice = (MSEC_PER_SEC / HZ) * RR_TIMESLICE;
 
@@ -1005,6 +1007,7 @@ dequeue_top_rt_rq(struct rt_rq *rt_rq)
 	BUG_ON(!rq->nr_running);
 
 	sub_nr_running(rq, rt_rq->rt_nr_running);
+	trace_sched_rq_size_change(rq, -rt_rq->rt_nr_running);
 	rt_rq->rt_queued = 0;
 
 }
@@ -1024,6 +1027,7 @@ enqueue_top_rt_rq(struct rt_rq *rt_rq)
 
 	if (rt_rq->rt_nr_running) {
 		add_nr_running(rq, rt_rq->rt_nr_running);
+		trace_sched_rq_size_change(rq, rt_rq->rt_nr_running);
 		rt_rq->rt_queued = 1;
 	}
 
