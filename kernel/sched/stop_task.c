@@ -9,6 +9,8 @@
  */
 #include "sched.h"
 
+#include <trace/events/sched.h>
+
 #ifdef CONFIG_SMP
 static int
 select_task_rq_stop(struct task_struct *p, int cpu, int sd_flag, int flags)

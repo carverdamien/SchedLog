@@ -1919,7 +1919,13 @@ static inline int sched_tick_offload_init(void) { return 0; }
 static inline void sched_update_tick_dependency(struct rq *rq) { }
 #endif
 
-static inline void add_nr_running(struct rq *rq, unsigned count)
+#define add_nr_running(rq, count)			\
+	do {						\
+		__add_nr_running(rq, count);		\
+		trace_sched_rq_size_change(rq, count);	\
+	} while (0)
+
+static inline void __add_nr_running(struct rq *rq, unsigned count)
 {
 	unsigned prev_nr = rq->nr_running;
 
@@ -1935,7 +1941,13 @@ static inline void add_nr_running(struct rq *rq, unsigned count)
 	sched_update_tick_dependency(rq);
 }
 
-static inline void sub_nr_running(struct rq *rq, unsigned count)
+#define sub_nr_running(rq, count)			\
+	do {						\
+		__sub_nr_running(rq, count);		\
+		trace_sched_rq_size_change(rq, -count); \
+	} while (0)
+
+static inline void __sub_nr_running(struct rq *rq, unsigned count)
 {
 	rq->nr_running -= count;
 	/* Check if we still need preemption */
