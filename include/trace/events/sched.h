@@ -605,19 +605,19 @@ TRACE_EVENT(sched_rq_size_change,
 	    TP_ARGS(rq, count),
 
 	    TP_STRUCT__entry(
-		    __field(int, cpu  )
-		    __field(int, size )
-		    __field(int, count)
+		    __field(int, rq_cpu )
+		    __field(int, rq_size)
+		    __field(int, count  )
 	    ),
 
 	    TP_fast_assign(
-		    __entry->cpu   = rq->cpu;
-		    __entry->size  = rq->nr_running;
-		    __entry->count = count;
+		    __entry->rq_cpu  = rq->cpu;
+		    __entry->rq_size = rq->nr_running;
+		    __entry->count   = count;
 	    ),
 
-	    TP_printk("cpu=%d size=%d count=%d",
-		      __entry->cpu, __entry->size, __entry->count)
+	    TP_printk("rq_cpu=%d rq_size=%d count=%d",
+		      __entry->rq_cpu, __entry->rq_size, __entry->count)
 );
 
 /*
