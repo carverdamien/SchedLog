@@ -621,6 +621,26 @@ TRACE_EVENT(sched_rq_size_change,
 );
 
 /*
+ * Tracepoint for scheduler_tick.
+ */
+TRACE_EVENT(sched_tick,
+
+	    TP_PROTO(unsigned int freq),
+
+	    TP_ARGS(freq),
+
+	    TP_STRUCT__entry(
+		    __field(unsigned int, freq)
+	    ),
+
+	    TP_fast_assign(
+		    __entry->freq  = freq;
+	    ),
+
+	    TP_printk("freq=%ud", __entry->freq)
+);
+
+/*
  * Following tracepoints are not exported in tracefs and provide hooking
  * mechanisms only for testing and debugging purposes.
  *
