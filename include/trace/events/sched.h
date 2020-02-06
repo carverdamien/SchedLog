@@ -637,7 +637,7 @@ TRACE_EVENT(sched_tick,
 		    __entry->freq  = freq;
 	    ),
 
-	    TP_printk("freq=%ud", __entry->freq)
+	    TP_printk("freq=%u", __entry->freq)
 );
 
 /*
